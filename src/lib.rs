@@ -1,14 +1,16 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use actix_web::{HttpResponse, Responder};
+
+pub async fn health_check() -> HttpResponse {
+    HttpResponse::Ok().into()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::health_check;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    #[tokio::test]
+    async fn health_check_succeeds() {
+        let response = health_check().await;
+        assert!(response.status().is_success());
     }
 }
