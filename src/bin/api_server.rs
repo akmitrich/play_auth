@@ -2,5 +2,5 @@
 async fn main() -> std::io::Result<()> {
     println!("Binded at 0.0.0.0:24944");
     let listener = std::net::TcpListener::bind("0.0.0.0:24944")?;
-    play_auth::run(listener)?.await
+    play_auth::startup::run(listener)?.await
 }
