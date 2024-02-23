@@ -4,10 +4,10 @@ async fn health_check() -> impl Responder {
     HttpResponse::Ok()
 }
 
-pub fn run() -> std::io::Result<dev::Server> {
+pub fn run(listener: std::net::TcpListener) -> std::io::Result<dev::Server> {
     Ok(
         HttpServer::new(|| App::new().route("/health_check", web::get().to(health_check)))
-            .bind("0.0.0.0:24944")?
+            .listen(listener)?
             .run(),
     )
 }

@@ -1,5 +1,6 @@
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     println!("Binded at 0.0.0.0:24944");
-    play_auth::run()?.await
+    let listener = std::net::TcpListener::bind("0.0.0.0:24944")?;
+    play_auth::run(listener)?.await
 }

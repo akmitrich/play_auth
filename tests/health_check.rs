@@ -1,9 +1,9 @@
 #[tokio::test]
 async fn health_check_works() {
-    spawn_app();
+    let address = spawn_app();
     let client = reqwest::Client::new();
     let response = client
-        .get("http://127.0.0.1:24944/health_check")
+        .get(format!("{}/health_check", address))
         .send()
         .await
         .expect("Failed to send health check request.");
@@ -11,7 +11,10 @@ async fn health_check_works() {
     assert_eq!(Some(0), response.content_length());
 }
 
-fn spawn_app() {
-    let server = play_auth::run().expect("Failed to spawn application");
+fn spawn_app() -> String {
+    let listener = std::net::TcpListener::bind("0.0.0.0:0").expect("Failed to bind random port");
+    let port = listener.local_addr().unwrap().port();
+    let server = play_auth::run(listener).expect("Failed to spawn application");
     let _ = tokio::spawn(server);
+    format!("http://127.0.0.1:{}", port)
 }
