@@ -9,3 +9,6 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [[bin]]
 name = "api_server"
+
+[dev-dependencies]
+reqwest = "0.11"
