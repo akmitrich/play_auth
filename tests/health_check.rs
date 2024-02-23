@@ -78,9 +78,7 @@ async fn spawn_app() -> TestApp {
     let mut configuration =
         play_auth::configuration::get_configuration().expect("Failed to read configuration.");
     configuration.database.database_name = uuid::Uuid::new_v4().to_string();
-    let connection_pool = sqlx::PgPool::connect(&configuration.database.connection_string())
-        .await
-        .expect("Failed to connect to Postgres");
+    let connection_pool = configuration.database.configure_test_database().await;
     let server = play_auth::startup::run(listener, connection_pool.clone())
         .expect("Failed to spawn application");
     let _ = tokio::spawn(server);

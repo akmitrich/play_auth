@@ -1,3 +1,5 @@
+use sqlx::{Connection, Executor};
+
 #[derive(Debug, serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
@@ -25,5 +27,30 @@ impl DatabaseSettings {
             "postgres://{}:{}@{}:{}/{}",
             self.username, self.password, self.host, self.port, self.database_name
         )
+    }
+
+    pub fn connection_string_without_db(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            self.username, self.password, self.host, self.port
+        )
+    }
+
+    pub async fn configure_test_database(&self) -> sqlx::PgPool {
+        let mut connection = sqlx::PgConnection::connect(&self.connection_string_without_db())
+            .await
+            .expect("Failed to connect to Postgres.");
+        connection
+            .execute(format!(r#"CREATE DATABASE "{}";"#, self.database_name).as_str())
+            .await
+            .expect("Failed to create database.");
+        let connection_pool = sqlx::PgPool::connect(&self.connection_string())
+            .await
+            .expect("Failed to connect a pool to Postgres.");
+        sqlx::migrate!("./migrations")
+            .run(&connection_pool)
+            .await
+            .expect("Failed to migrate the database.");
+        connection_pool
     }
 }
