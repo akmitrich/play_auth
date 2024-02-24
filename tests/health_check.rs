@@ -71,7 +71,29 @@ async fn subscribe_returns_400_when_data_are_missing() {
     }
 }
 
+static TRACING: once_cell::sync::Lazy<()> = once_cell::sync::Lazy::new(|| {
+    let default_filter_level = "debug";
+    let subscriber_name = "test";
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber = play_auth::telemetry::get_subscriber(
+            subscriber_name,
+            default_filter_level,
+            std::io::stdout,
+        );
+        play_auth::telemetry::init_subscriber(subscriber);
+    } else {
+        let subscriber = play_auth::telemetry::get_subscriber(
+            subscriber_name,
+            default_filter_level,
+            std::io::sink,
+        );
+        play_auth::telemetry::init_subscriber(subscriber);
+    }
+});
+
 async fn spawn_app() -> TestApp {
+    once_cell::sync::Lazy::force(&TRACING);
+
     let listener = std::net::TcpListener::bind("0.0.0.0:0").expect("Failed to bind random port");
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);

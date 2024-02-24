@@ -1,6 +1,6 @@
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let subscriber = play_auth::telemetry::get_subscriber("play_auth", "info");
+    let subscriber = play_auth::telemetry::get_subscriber("play_auth", "info", std::io::stdout);
     play_auth::telemetry::init_subscriber(subscriber);
 
     let configuration =
