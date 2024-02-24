@@ -1,6 +1,8 @@
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace")).init();
+    let subscriber = play_auth::telemetry::get_subscriber("play_auth", "info");
+    play_auth::telemetry::init_subscriber(subscriber);
+
     let configuration =
         play_auth::configuration::get_configuration().expect("Failed to read configuration.");
     let connection_pool = sqlx::PgPool::connect(&configuration.database.connection_string())
