@@ -25,6 +25,7 @@ features = [
     "uuid",
     "chrono",
     "migrate",
+    "offline",
 ]
 
 [[bin]]
