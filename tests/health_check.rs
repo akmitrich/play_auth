@@ -1,3 +1,4 @@
+use secrecy::ExposeSecret;
 use sqlx::Connection;
 
 pub struct TestApp {
@@ -24,7 +25,7 @@ async fn subscribe_returns_200_for_valid_form_data() {
     let configuration =
         play_auth::configuration::get_configuration().expect("Failed to get app configuration.");
     let connection_string = configuration.database.connection_string();
-    let mut connection = sqlx::PgConnection::connect(&connection_string)
+    let mut connection = sqlx::PgConnection::connect(&connection_string.expose_secret())
         .await
         .expect("Failed to connect to Postgres.");
     let client = reqwest::Client::new();
