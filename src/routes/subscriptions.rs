@@ -1,28 +1,30 @@
 use actix_web::{web, HttpResponse};
 
+use crate::domain::{NewSubscriber, SubscriberName};
+
 #[derive(serde::Deserialize)]
 pub struct FormData {
     email: String,
     name: String,
 }
 
-pub async fn subscribe(
-    form: web::Form<FormData>,
-    connection: web::Data<sqlx::PgPool>,
-) -> HttpResponse {
-    let request_id = uuid::Uuid::new_v4();
-    let request_span = tracing::info_span!("Adding a new subscriber", %request_id, subscriber_email=%form.email, subscriber_name=%form.name);
-    let _request_span_guard = request_span.enter();
-    tracing::info!("Saving new subscriber details in the database");
-    let new_uuid = sqlx::types::Uuid::parse_str(&uuid::Uuid::new_v4().to_string()).unwrap();
-    match sqlx::query!(
-        r#"INSERT INTO subscriptions (id, email, name, subscribed_at) VALUES ($1, $2, $3, $4)"#,
-        new_uuid,
-        form.email,
-        form.name,
-        chrono::Utc::now()
+#[tracing::instrument(
+    name = "Adding a new subscriber",
+    skip(form, pool),
+    fields(
+        subscriber_email = %form.email,
+        subscriber_name = %form.name
     )
-    .execute(connection.get_ref())
+)]
+pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<sqlx::PgPool>) -> HttpResponse {
+    tracing::info!("Saving new subscriber details in the database");
+    match insert_subscriber(
+        pool.get_ref(),
+        &NewSubscriber {
+            email: form.email.to_owned(),
+            name: SubscriberName::parse(form.name.to_owned()),
+        },
+    )
     .await
     {
         Ok(_) => {
@@ -34,4 +36,22 @@ pub async fn subscribe(
             HttpResponse::InternalServerError().finish()
         }
     }
+}
+
+async fn insert_subscriber(
+    pool: &sqlx::PgPool,
+    new_subscriber: &NewSubscriber,
+) -> Result<(), sqlx::Error> {
+    let new_uuid = sqlx::types::Uuid::parse_str(&uuid::Uuid::new_v4().to_string()).unwrap();
+    sqlx::query!(
+        r#"INSERT INTO subscriptions (id, email, name, subscribed_at) VALUES ($1, $2, $3, $4)"#,
+        new_uuid,
+        new_subscriber.email,
+        new_subscriber.name.inner_ref(),
+        chrono::Utc::now()
+    )
+    .execute(pool)
+    .await
+    .inspect_err(|e| tracing::error!("Failed to execute query: {:?}", e))?;
+    Ok(())
 }

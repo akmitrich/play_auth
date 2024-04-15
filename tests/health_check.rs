@@ -66,6 +66,32 @@ async fn subscribe_returns_400_when_data_are_missing() {
     }
 }
 
+#[tokio::test]
+async fn subscribe_returns_200_when_fields_are_present_but_empty() {
+    let app = spawn_app().await;
+    let test_cases = [
+        ("name=&email=ursula_le_guin%40gmail.com", "empty name"),
+        ("name=Ursula&email=", "empty email"),
+        ("name=Ursula&email=definitely-not-an-email", "invalid email"),
+    ];
+    let client = reqwest::Client::new();
+    for (body, description) in test_cases {
+        let response = client
+            .post(format!("{}/subscriptions", app.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+            .expect("Failed to send request.");
+        assert_eq!(
+            200,
+            response.status().as_u16(),
+            "API did not return 200 when {:?}",
+            description
+        );
+    }
+}
+
 static TRACING: once_cell::sync::Lazy<()> = once_cell::sync::Lazy::new(|| {
     let default_filter_level = "debug";
     let subscriber_name = "test";
