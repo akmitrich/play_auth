@@ -23,9 +23,10 @@ async fn health_check_works() {
 async fn subscribe_returns_200_for_valid_form_data() {
     let app = spawn_app().await;
     let configuration =
-        play_auth::configuration::get_configuration().expect("Failed to get app configuration.");
+        play_auth::configuration::get_configuration().expect("Failed to get app configuration");
     let connection_string = configuration.database.connection_string();
-    let mut connection = sqlx::PgConnection::connect(&connection_string.expose_secret())
+    dbg!(connection_string.expose_secret());
+    let mut connection = sqlx::PgConnection::connect(connection_string.expose_secret())
         .await
         .expect("Failed to connect to Postgres.");
     let client = reqwest::Client::new();
@@ -41,7 +42,7 @@ async fn subscribe_returns_200_for_valid_form_data() {
     let saved = sqlx::query!("SELECT email, name FROM subscriptions")
         .fetch_one(&mut connection)
         .await
-        .expect("Failed to fetch saved subscription.");
+        .expect("Failed to fetch saved subscription");
     assert_eq!("ursula_le_guin@gmail.com", saved.email);
     assert_eq!("le guin", saved.name);
 }
@@ -104,7 +105,7 @@ async fn spawn_app() -> TestApp {
     let connection_pool = configuration.database.configure_test_database().await;
     let server = play_auth::startup::run(listener, connection_pool.clone())
         .expect("Failed to spawn application");
-    let _ = tokio::spawn(server);
+    tokio::spawn(server);
     TestApp {
         address,
         db_pool: connection_pool,

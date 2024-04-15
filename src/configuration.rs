@@ -66,14 +66,14 @@ impl DatabaseSettings {
 
     pub async fn configure_test_database(&self) -> sqlx::PgPool {
         let mut connection =
-            sqlx::PgConnection::connect(&self.connection_string_without_db().expose_secret())
+            sqlx::PgConnection::connect(self.connection_string_without_db().expose_secret())
                 .await
                 .expect("Failed to connect to Postgres.");
         connection
             .execute(format!(r#"CREATE DATABASE "{}";"#, self.database_name).as_str())
             .await
             .expect("Failed to create database.");
-        let connection_pool = sqlx::PgPool::connect(&self.connection_string().expose_secret())
+        let connection_pool = sqlx::PgPool::connect(self.connection_string().expose_secret())
             .await
             .expect("Failed to connect a pool to Postgres.");
         sqlx::migrate!("./migrations")

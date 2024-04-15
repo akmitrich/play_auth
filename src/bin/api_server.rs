@@ -8,7 +8,7 @@ async fn main() -> std::io::Result<()> {
     let configuration =
         play_auth::configuration::get_configuration().expect("Failed to read configuration.");
     let connection_pool =
-        sqlx::PgPool::connect_lazy(&configuration.database.connection_string().expose_secret())
+        sqlx::PgPool::connect_lazy(configuration.database.connection_string().expose_secret())
             .expect("Failed to connect to Postgres");
     let address = format!(
         "{}:{}",
