@@ -1,5 +1,5 @@
-use secrecy::ExposeSecret;
-use sqlx::Connection;
+use play_auth::configuration::DatabaseSettings;
+use sqlx::{Connection, Executor};
 
 pub struct TestApp {
     pub address: String,
@@ -22,13 +22,6 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_returns_200_for_valid_form_data() {
     let app = spawn_app().await;
-    let configuration =
-        play_auth::configuration::get_configuration().expect("Failed to get app configuration");
-    let connection_string = configuration.database.connection_string();
-    dbg!(connection_string.expose_secret());
-    let mut connection = sqlx::PgConnection::connect(connection_string.expose_secret())
-        .await
-        .expect("Failed to connect to Postgres.");
     let client = reqwest::Client::new();
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let response = client
@@ -40,7 +33,7 @@ async fn subscribe_returns_200_for_valid_form_data() {
         .expect("Failed to send subscriptions request");
     assert_eq!(200, response.status().as_u16());
     let saved = sqlx::query!("SELECT email, name FROM subscriptions")
-        .fetch_one(&mut connection)
+        .fetch_one(&app.db_pool)
         .await
         .expect("Failed to fetch saved subscription");
     assert_eq!("ursula_le_guin@gmail.com", saved.email);
@@ -102,7 +95,7 @@ async fn spawn_app() -> TestApp {
     let mut configuration =
         play_auth::configuration::get_configuration().expect("Failed to read configuration.");
     configuration.database.database_name = uuid::Uuid::new_v4().to_string();
-    let connection_pool = configuration.database.configure_test_database().await;
+    let connection_pool = configure_database(&configuration.database).await;
     let server = play_auth::startup::run(listener, connection_pool.clone())
         .expect("Failed to spawn application");
     tokio::spawn(server);
@@ -110,4 +103,22 @@ async fn spawn_app() -> TestApp {
         address,
         db_pool: connection_pool,
     }
+}
+
+pub async fn configure_database(config: &DatabaseSettings) -> sqlx::PgPool {
+    let mut connection = sqlx::PgConnection::connect_with(&config.without_db())
+        .await
+        .expect("Failed to connect to Postgres");
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+        .await
+        .expect("Failed to create database.");
+    let connection_pool = sqlx::PgPool::connect_with(config.with_db())
+        .await
+        .expect("Failed to connect a pool to Postgres.");
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database.");
+    connection_pool
 }

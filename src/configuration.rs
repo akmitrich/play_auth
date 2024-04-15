@@ -1,5 +1,8 @@
 use secrecy::{ExposeSecret, Secret};
-use sqlx::{Connection, Executor};
+use sqlx::{
+    postgres::{PgConnectOptions, PgSslMode},
+    ConnectOptions,
+};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Settings {
@@ -20,6 +23,7 @@ pub struct DatabaseSettings {
     pub port: u16,
     pub host: String,
     pub database_name: String,
+    pub require_ssl: bool,
 }
 
 pub enum Environment {
@@ -43,44 +47,24 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 }
 
 impl DatabaseSettings {
-    pub fn connection_string(&self) -> Secret<String> {
-        Secret::new(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.port,
-            self.database_name
-        ))
+    pub fn with_db(&self) -> PgConnectOptions {
+        let mut options = self.without_db().database(&self.database_name);
+        options.log_statements(tracing_log::log::LevelFilter::Trace);
+        options
     }
 
-    pub fn connection_string_without_db(&self) -> Secret<String> {
-        Secret::new(format!(
-            "postgres://{}:{}@{}:{}",
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.port
-        ))
-    }
-
-    pub async fn configure_test_database(&self) -> sqlx::PgPool {
-        let mut connection =
-            sqlx::PgConnection::connect(self.connection_string_without_db().expose_secret())
-                .await
-                .expect("Failed to connect to Postgres.");
-        connection
-            .execute(format!(r#"CREATE DATABASE "{}";"#, self.database_name).as_str())
-            .await
-            .expect("Failed to create database.");
-        let connection_pool = sqlx::PgPool::connect(self.connection_string().expose_secret())
-            .await
-            .expect("Failed to connect a pool to Postgres.");
-        sqlx::migrate!("./migrations")
-            .run(&connection_pool)
-            .await
-            .expect("Failed to migrate the database.");
-        connection_pool
+    pub fn without_db(&self) -> PgConnectOptions {
+        let ssl_mode = if self.require_ssl {
+            PgSslMode::Require
+        } else {
+            PgSslMode::Prefer
+        };
+        PgConnectOptions::new()
+            .host(&self.host)
+            .username(&self.username)
+            .password(self.password.expose_secret())
+            .port(self.port)
+            .ssl_mode(ssl_mode)
     }
 }
 
