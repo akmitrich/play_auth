@@ -16,6 +16,11 @@ Make `sqlx-cli` available:
 cargo install --version="~0.7" sqlx-cli --no-default-features --features rustls,postgres
 ```
 
+In `.env` file prepare
+```
+DATABASE_URL="postgres://[postgres]:[password]@localhost:5432/newsletter"
+```
+
 Every day first of all run
 ```
 ./scripts/init_db.sh
