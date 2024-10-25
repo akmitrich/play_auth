@@ -25,3 +25,6 @@ Every day first of all run
 ```
 ./scripts/init_db.sh
 ```
+
+# Last point in da book
+Continue at `Chapter 4 Telemetry`
