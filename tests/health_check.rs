@@ -1,7 +1,7 @@
 use std::net::TcpListener;
 
 use play_auth::configuration::get_configuration;
-use sqlx::{Connection, PgConnection};
+use sqlx::Connection;
 
 #[tokio::test]
 async fn health_check_works() {
@@ -19,11 +19,6 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
     let app = spawn_app().await;
-    let configuration = get_configuration().expect("Failed to read configuration");
-    let connection_string = configuration.database.connection_string();
-    let mut connection = PgConnection::connect(&connection_string)
-        .await
-        .expect("Failed to connect to Postgres.");
     let client = reqwest::Client::new();
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let response = client
@@ -35,7 +30,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
         .expect("Failed to execute request.");
     assert_eq!(200, response.status().as_u16());
     let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
-        .fetch_one(&mut connection)
+        .fetch_one(&app.db_pool)
         .await
         .expect("Failed to fetch saved subscription.");
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
@@ -101,7 +96,7 @@ pub async fn configure_database(
         .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
         .await
         .expect("Failed to create database.");
-
+    println!("Connect to {:?}", config.connection_string());
     let connection_pool = sqlx::PgPool::connect(&config.connection_string())
         .await
         .expect("Failed to connect to Postgres.");
