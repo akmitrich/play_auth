@@ -27,4 +27,4 @@ Every day first of all run
 ```
 
 # Last point in da book
-Continue at `Chapter 4 Telemetry`
+Continue at `4.5 Structured Logging`
