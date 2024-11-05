@@ -27,4 +27,4 @@ Every day first of all run
 ```
 
 # Last point in da book
-Continue at `4.5 Structured Logging`
+Continue at `4.5.13 Protect Your Secrets - secrecy`
