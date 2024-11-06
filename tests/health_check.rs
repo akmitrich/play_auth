@@ -1,4 +1,5 @@
 use play_auth::configuration::get_configuration;
+use secrecy::ExposeSecret;
 use sqlx::Connection;
 use std::net::TcpListener;
 
@@ -111,15 +112,16 @@ use sqlx::Executor;
 pub async fn configure_database(
     config: &play_auth::configuration::DatabaseSettings,
 ) -> sqlx::PgPool {
-    let mut connection = sqlx::PgConnection::connect(&config.connection_string_without_db())
-        .await
-        .expect("Failed to connect to Postgres");
+    let mut connection =
+        sqlx::PgConnection::connect(config.connection_string_without_db().expose_secret())
+            .await
+            .expect("Failed to connect to Postgres");
     connection
         .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
         .await
         .expect("Failed to create database.");
     println!("Connect to {:?}", config.connection_string());
-    let connection_pool = sqlx::PgPool::connect(&config.connection_string())
+    let connection_pool = sqlx::PgPool::connect(config.connection_string().expose_secret())
         .await
         .expect("Failed to connect to Postgres.");
     sqlx::migrate!("./migrations")
